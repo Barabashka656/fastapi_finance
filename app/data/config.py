@@ -43,4 +43,7 @@ class Settings(BaseSettings):
     def REDIS_URL(self) -> RedisDsn:
         return f'redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0'
 
+    # sentry fields
+    SENTRY_URL: HttpUrl
+
 settings = Settings(_env_file=path, _env_file_encoding='utf-8')
