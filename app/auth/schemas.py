@@ -12,7 +12,7 @@ class UserBase(BaseModel):
     is_superuser: bool = Field(False)
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
