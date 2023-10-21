@@ -34,8 +34,8 @@ class FinanceService:
         "Other",
     ]
 
-    @classmethod
-    async def init_currencies(cls):
+    @staticmethod
+    async def init_currencies():
         async with async_session_maker() as session:
             currencies = await CurrencyDAO.find_all(session, limit=1)
             if not currencies:
@@ -46,21 +46,21 @@ class FinanceService:
                 await session.commit()
 
 
-    @classmethod
-    async def adding_base_categories(cls, db_user_id: User):
+    @staticmethod
+    async def adding_base_categories(db_user_id: User):
         async with async_session_maker() as session:
             await IncomeTypeDAO.add(
                 session, 
                 {
                     "user_id": db_user_id, 
-                    "categories": cls._base_incomes
+                    "categories": FinanceService._base_incomes
                 }
             )
             await ExpenseTypeDAO.add(
                 session, 
                 {
                     "user_id": db_user_id, 
-                    "categories": cls._base_expencies
+                    "categories": FinanceService._base_expencies
                 }
             )
             await UserDAO.find_all_with_joinedload_option(
@@ -70,20 +70,17 @@ class FinanceService:
             await session.commit()
 
 
-    @classmethod
+    @staticmethod
     async def adding_finance_category(
-        cls, 
         finance_type: str,
         user_id: uuid.UUID, 
         new_category: str
     ):
         async with async_session_maker() as session:
-            if finance_type == cls.INCOME:
+            if finance_type == FinanceService.INCOME:
                 dao = IncomeTypeDAO
-                model = IncomeTypeModel
-            elif finance_type == cls.EXPENSE:
+            elif finance_type == FinanceService.EXPENSE:
                 dao = ExpenseTypeDAO
-                model = ExpenseTypeModel
             finance_type_instance: ExpenseTypeModel | IncomeTypeModel = \
                 await dao.find_one_or_none(session, user_id=user_id)
             categories = finance_type_instance.categories
@@ -91,7 +88,7 @@ class FinanceService:
             db_instance: IncomeTypeModel | ExpenseTypeModel = \
             await dao.update(
                 session,
-                model.user_id == user_id,
+                user_id == user_id,
                 obj_in=BaseFinanceType(
                     categories=categories
                 )
@@ -99,19 +96,17 @@ class FinanceService:
             await session.commit()
         return db_instance.categories
     
-    @classmethod
+    @staticmethod
     async def adding_finance_item(
-        cls, 
         finance_type: str,
         user_id: uuid.UUID, 
         finance: FinanceItemCreate
     ) -> IncomeModel | ExpenseModel:
         async with async_session_maker() as session:
-            if finance_type == cls.INCOME:
+            if finance_type == FinanceService.INCOME:
                 dao = IncomeDAO
-            elif finance_type == cls.EXPENSE:
+            elif finance_type == FinanceService.EXPENSE:
                 dao = ExpenseDAO
-            print('123412341432')
             db_instance: IncomeModel | ExpenseModel = \
                 await dao.add(
                     session,
@@ -120,14 +115,11 @@ class FinanceService:
                         user_id=user_id
                     )
                 )
-            print('123412341432233')
             await session.commit()
-            print('12341234143fdsfddfaf2')
-            print(db_instance)
         return db_instance
 
-    @classmethod
-    async def get_currencies_list(cls, *filter, **filter_by) -> list[CurrencyModel]:
+    @staticmethod
+    async def get_currencies_list(*filter, **filter_by) -> list[CurrencyModel]:
         async with async_session_maker() as session:
             currencies = await CurrencyDAO.find_all(session, *filter, **filter_by)
         if not currencies:
@@ -136,9 +128,8 @@ class FinanceService:
             )
         return currencies
 
-    @classmethod
+    @staticmethod
     async def get_categories_list(
-        cls, 
         finance_type: str, 
         user_id: uuid.UUID, 
     ) -> list[str]:
