@@ -86,12 +86,12 @@ async def request_for_verify(
     return await AuthService.send_verification_token(user)
 
 
-@auth_router.post("/verify/{token}")
+@auth_router.get("/verify/{token}")
 async def verify(
     token: str
 ):
     return await AuthService.verify_user(token)
-    
+
 
 @auth_router.post("/logout")
 async def logout(
