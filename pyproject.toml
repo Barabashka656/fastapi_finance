@@ -21,6 +21,9 @@ yt-dlp = "^2023.10.7"
 fastapi-cache2 = {extras = ["redis"], version = "^0.2.1"}
 sqladmin = "^0.15.2"
 sentry-sdk = {extras = ["fastapi"], version = "^1.32.0"}
+celery = "^5.3.4"
+flower = "^2.0.1"
+pyotp = "^2.9.0"
 
 
 [build-system]

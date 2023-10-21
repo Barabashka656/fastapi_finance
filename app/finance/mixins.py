@@ -14,10 +14,11 @@ class UserRelationMixin:
     _user_id_unique: bool = False
     _user_back_populates: str | None = None
     _user_primary_key: bool = False
-
+    _user_fk_ondelete: str | None = "CASCADE"
+    
     @declared_attr
     def user_id(cls) -> Mapped[uuid.UUID]:
-        return mapped_column(ForeignKey('user.id'), unique=cls._user_id_unique, primary_key=cls._user_primary_key)
+        return mapped_column(ForeignKey('user.id', ondelete=cls._user_fk_ondelete), unique=cls._user_id_unique, primary_key=cls._user_primary_key)
     
     @declared_attr
     def user(cls) -> Mapped["UserModel"]:

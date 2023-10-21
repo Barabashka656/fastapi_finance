@@ -69,4 +69,3 @@ class BaseProfile(BaseModel):
 
 class Profile(BaseProfile):
     user_id: uuid.UUID
-

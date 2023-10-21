@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    EMAIL_VERIFY_TOKEN_EXPIRE_DAYS: int = 5
     
     # pg database fields
     DB_NAME: str
@@ -43,7 +44,15 @@ class Settings(BaseSettings):
     def REDIS_URL(self) -> RedisDsn:
         return f'redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0'
 
+    # email fields
+    SMTP_USER: EmailStr
+    SMTP_PASSWORD: str
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+
     # sentry fields
     SENTRY_URL: HttpUrl
+
+    OTP_SECRET_KEY: str
 
 settings = Settings(_env_file=path, _env_file_encoding='utf-8')

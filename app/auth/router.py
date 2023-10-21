@@ -4,7 +4,8 @@ from app.finance.service import FinanceService
 from .dependencies import (
     get_current_active_user,
     get_current_superuser,
-    get_current_user
+    get_current_verified_user,
+    get_not_verified_user
 )
 from .models import UserModel
 from .service import (
@@ -45,7 +46,6 @@ user_router = APIRouter(
     tags=["user"]
 )
 
-
     #################
     #  Auth Router  #
     #################
@@ -61,7 +61,6 @@ async def login(
     response: Response,
     credentials: OAuth2PasswordRequestForm = Depends()
 ) -> Token:
-    print(credentials.username, credentials.password)
     user = await AuthService.authenticate_user(credentials.username, credentials.password)
     if not user:
         raise InvalidCredentialsException
@@ -80,6 +79,19 @@ async def login(
     )
     return token
 
+@auth_router.get("/request_for_verify")
+async def request_for_verify(
+    user: UserModel = Depends(get_not_verified_user),
+) -> bool:
+    return await AuthService.send_verification_token(user)
+
+
+@auth_router.post("/verify/{token}")
+async def verify(
+    token: str
+):
+    return await AuthService.verify_user(token)
+    
 
 @auth_router.post("/logout")
 async def logout(
@@ -120,7 +132,7 @@ async def refresh_token(
 @auth_router.post("/abort")
 async def abort_all_sessions(
     response: Response,
-    user: UserModel = Depends(get_current_user)
+    user: UserModel = Depends(get_current_verified_user)
 ):
     response.delete_cookie('access_token')
     response.delete_cookie('refresh_token')
@@ -144,25 +156,25 @@ async def get_users_list(
 
 
 @user_router.get("/me")
-async def get_current_user(
+async def get_current_verified_user(
     current_user: UserModel = Depends(get_current_active_user)
 ) -> User:
     return await UserService.get_user(current_user.id)
 
 
-@user_router.put("/me")
+@user_router.patch("/me")
 async def update_current_user(
-    user: UserUpdate,
-    current_user: UserModel = Depends(get_current_user)
+    new_password: str,
+    current_user: UserModel = Depends(get_current_verified_user)
 ) -> User:
-    return await UserService.update_user(current_user.id, user)
+    return await UserService.update_user(current_user.id, password=new_password)
 
 
 @user_router.delete("/me")
 async def delete_current_user(
     request: Request,
     response: Response,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_verified_user)
 ):
     response.delete_cookie('access_token')
     response.delete_cookie('refresh_token')
@@ -202,12 +214,6 @@ async def delete_user(
     #  Profile Router  #
     ####################
 
-@user_router.get("/me")
-async def get_current_user(
-    current_user: UserModel = Depends(get_current_active_user)
-) -> User:
-    return await UserService.get_user(current_user.id)
-
 @user_router.post("/me/profile", status_code=status.HTTP_201_CREATED)
 async def create_profile(
     profile: BaseProfile,
@@ -218,13 +224,13 @@ async def create_profile(
 @user_router.put("/me/profile")
 async def update_profile(
     profile: BaseProfile,
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_verified_user)
 ) -> Profile:
     return await UserService.update_profile(profile, current_user.id)
 
 @user_router.delete("/me/profile")
 async def delete_profile(
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(get_current_verified_user)
 ):
     return await UserService.delete_profile(current_user.id)
      

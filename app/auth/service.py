@@ -1,10 +1,11 @@
 import uuid
-
 from datetime import datetime, timedelta, timezone
+import smtplib
+from email.message import EmailMessage
+from app.tasks.celery import celery_app
 
-from app.finance.dao import IncomeTypeDAO
 
-
+from app.data.config import settings
 from .schemas import (
     BaseProfile,
     Profile,
@@ -27,21 +28,16 @@ from app.data.config import settings
 
 from fastapi import HTTPException, status
 from jose import jwt
+import pyotp
 
 
 class AuthService:
-    @classmethod
-    async def create_token(cls, user_id: uuid.UUID) -> Token:
-        access_token = cls._create_access_token(user_id)
+    @staticmethod
+    async def create_token(user_id: uuid.UUID) -> Token:
+        access_token = AuthService._create_jwt_token(user_id=user_id)
         refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        refresh_token = cls._create_refresh_token()
-
+        refresh_token = AuthService._create_refresh_token()
         async with async_session_maker() as session:
-            a = RefreshSessionCreate(
-                user_id=user_id,
-                refresh_token=refresh_token,
-                expires_in=refresh_token_expires.total_seconds(),
-            )
             await RefreshSessionDAO.add(
                 session,
                 RefreshSessionCreate(
@@ -52,11 +48,13 @@ class AuthService:
             )
             await session.commit()
         return Token(
-            access_token=access_token, refresh_token=refresh_token, token_type="bearer"
+            access_token=access_token, 
+            refresh_token=refresh_token, 
+            token_type="bearer"
         )
 
-    @classmethod
-    async def logout(cls, token: uuid.UUID) -> None:
+    @staticmethod
+    async def logout(token: uuid.UUID) -> None:
         async with async_session_maker() as session:
             refresh_session = await RefreshSessionDAO.find_one_or_none(
                 session, RefreshSessionModel.refresh_token == token
@@ -65,8 +63,8 @@ class AuthService:
                 await RefreshSessionDAO.delete(session, id=refresh_session.id)
             await session.commit()
 
-    @classmethod
-    async def refresh_token(cls, token: uuid.UUID) -> Token:
+    @staticmethod
+    async def refresh_token(token: uuid.UUID) -> Token:
         async with async_session_maker() as session:
             refresh_session = await RefreshSessionDAO.find_one_or_none(
                 session, RefreshSessionModel.refresh_token == token
@@ -83,9 +81,9 @@ class AuthService:
             if not user:
                 raise InvalidTokenException
 
-            access_token = cls._create_access_token(user.id)
+            access_token = AuthService._create_jwt_token(user_id=user.id)
             refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-            refresh_token = cls._create_refresh_token()
+            refresh_token = AuthService._create_refresh_token()
 
             await RefreshSessionDAO.update(
                 session,
@@ -100,51 +98,135 @@ class AuthService:
             access_token=access_token, refresh_token=refresh_token, token_type="bearer"
         )
 
-    @classmethod
-    async def authenticate_user(cls, email: str, password: str) -> UserModel | None:
+    @staticmethod
+    async def authenticate_user(email: str, password: str) -> UserModel | None:
         async with async_session_maker() as session:
             db_user = await UserDAO.find_one_or_none(session, email=email)
         if db_user and is_valid_password(password, db_user.hashed_password):
             return db_user
         return None
 
-    @classmethod
-    async def abort_all_sessions(cls, user_id: uuid.UUID):
+    @staticmethod
+    async def abort_all_sessions(user_id: uuid.UUID):
         async with async_session_maker() as session:
             await RefreshSessionDAO.delete(
                 session, RefreshSessionModel.user_id == user_id
             )
             await session.commit()
 
-    @classmethod
-    def _create_access_token(cls, user_id: uuid.UUID) -> str:
-        to_encode = {
-            "sub": str(user_id),
-            "exp": datetime.utcnow()
-            + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-        }
+    @staticmethod
+    def _create_jwt_token(user_id: uuid.UUID = None, email: str = None) -> str:
+        if user_id:
+            to_encode = {
+                "sub": str(user_id),
+                "exp": datetime.utcnow()
+                + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            }
+        else:
+            to_encode = {
+                "email": email,
+                "exp": datetime.utcnow()
+                + timedelta(days=settings.EMAIL_VERIFY_TOKEN_EXPIRE_DAYS),
+            }
         encoded_jwt = jwt.encode(
             to_encode, settings.SECRET, algorithm=settings.ALGORITHM
         )
-        return f"Bearer {encoded_jwt}"
+        if user_id:
+            return f"Bearer {encoded_jwt}"
+        return encoded_jwt
 
-    @classmethod
-    def _create_refresh_token(cls) -> str:
+    @staticmethod
+    def _create_refresh_token() -> str:
         return uuid.uuid4()
+    
+    @staticmethod
+    def _create_verify_mail(token: str):
+        msg = EmailMessage()
+        msg['Subject'] = 'Verify your email address'
+        msg['From'] = settings.SMTP_USER
+        msg['To'] = settings.SMTP_USER
 
+        msg.set_content(
+            '<div>'
+            '<h1>verify account</h1>'
+            f'http://localhost:8080/auth/verify/{token}'
+            '</div>',
+            subtype='html'
+        )
+        return msg
+    
+    
+    @celery_app.task
+    def send_verify_email(token: str):
+        msg = AuthService._create_verify_mail(token)
+        with smtplib.SMTP_SSL(
+            settings.SMTP_HOST, 
+            settings.SMTP_PORT
+        ) as server:
+            server.login(
+                settings.SMTP_USER, 
+                settings.SMTP_PASSWORD
+            )
+            server.send_message(msg)
+    
+    @staticmethod
+    async def send_verification_token(user: UserModel):
+        if user.is_verified:
+            raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT, 
+                    detail="User already exists"
+                )
+        token = AuthService._create_jwt_token(email=user.email)
+        AuthService.send_verify_email.delay(token)
+        return True
+        
+    # @staticmethod
+    # async def create_otp_for_verify():
+    #     code_generator = pyotp.TOTP(settings.OTP_SECRET_KEY)
+    #     return code_generator.now()
+
+    @staticmethod
+    async def verify_user(token: str):
+        async with async_session_maker() as session:
+            try:
+                payload = jwt.decode(token, settings.SECRET, algorithms=[settings.ALGORITHM])
+                email = payload.get("email")
+                if not email:
+                    raise InvalidTokenException
+            except Exception:
+                raise InvalidTokenException
+            db_user = await UserDAO.find_one_or_none(session, email=email)
+            if db_user.is_verified:
+                return {
+                    "status": "error",
+                    "data": None,
+                    "details": "User already verified"
+                }
+        
+            await UserDAO.update(
+                session, 
+                email == email, 
+                obj_in={"is_verified": True}
+            )
+            await session.commit()
+            return {
+                "status": "success",
+                "data": None,
+                "details": "Verification is success"
+            }
+            
 
 class UserService:
-    @classmethod
-    async def register_new_user(cls, user: UserCreate) -> UserModel:
+    @staticmethod
+    async def register_new_user(user: UserCreate) -> UserModel:
         async with async_session_maker() as session:
             user_exist = await UserDAO.find_one_or_none(session, email=user.email)
             if user_exist:
                 raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT, detail="User already exists"
+                    status_code=status.HTTP_409_CONFLICT, 
+                    detail="User already exists"
                 )
 
-            user.is_superuser = False
-            user.is_verified = False
             db_user = await UserDAO.add(
                 session,
                 UserCreateDB(
@@ -155,8 +237,8 @@ class UserService:
             await session.commit()
         return db_user
 
-    @classmethod
-    async def get_user(cls, user_id: uuid.UUID) -> UserModel:
+    @staticmethod
+    async def get_user(user_id: uuid.UUID) -> UserModel:
         async with async_session_maker() as session:
             db_user = await UserDAO.find_one_or_none(session, id=user_id)
         if not db_user:
@@ -165,8 +247,13 @@ class UserService:
             )
         return db_user
 
-    @classmethod
-    async def update_user(cls, user_id: uuid.UUID, user: UserUpdate) -> UserModel:
+    @staticmethod
+    async def update_user(
+        user_id: uuid.UUID,
+        *, 
+        password: str | None = None, 
+        is_verified: bool | None = None
+    ) -> UserModel:
         async with async_session_maker() as session:
             db_user = await UserDAO.find_one_or_none(session, UserModel.id == user_id)
             if not db_user:
@@ -174,37 +261,43 @@ class UserService:
                     status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
                 )
 
-            if user.password:
-                user_in = UserUpdateDB(
-                    **user.model_dump(
-                        exclude={"is_active", "is_verified", "is_superuser"},
-                        exclude_unset=True,
-                    ),
-                    hashed_password=get_password_hash(user.password),
-                )
-            else:
-                user_in = UserUpdateDB(**user.model_dump())
+            # if user.password:
+            #     user_in = UserUpdateDB(
+            #         **user.model_dump(
+            #             exclude={"is_active", "is_verified", "is_superuser"},
+            #             exclude_unset=True,
+            #         ),
+            #         hashed_password=get_password_hash(user.password),
+            #     )
+            # else:
+            #     user_in = UserUpdateDB(**user.model_dump())
+            user_in = {}
+            if password:
+                user_in.update(hashed_password=get_password_hash(password))    
 
+            if isinstance(is_verified, bool):
+                user_in.update(hashed_password=get_password_hash(password))
+            
             user_update = await UserDAO.update(
                 session, UserModel.id == user_id, obj_in=user_in
             )
             await session.commit()
             return user_update
 
-    @classmethod
-    async def delete_user(cls, user_id: uuid.UUID):
+    @staticmethod
+    async def delete_user(user_id: uuid.UUID):
         async with async_session_maker() as session:
             db_user = await UserDAO.find_one_or_none(session, id=user_id)
             if not db_user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
                 )
-            await UserDAO.update(session, UserModel.id == user_id, {"is_active": False})
+            await UserDAO.update(session, UserModel.id == user_id, obj_in={"is_active": False})
             await session.commit()
 
-    @classmethod
+    @staticmethod
     async def get_users_list(
-        cls, *filter, offset: int = 0, limit: int = 100, **filter_by
+        *filter, offset: int = 0, limit: int = 100, **filter_by
     ) -> list[UserModel]:
         async with async_session_maker() as session:
             users = await UserDAO.find_all(
@@ -226,9 +319,9 @@ class UserService:
             for db_user in users
         ]
 
-    @classmethod
+    @staticmethod
     async def update_user_from_superuser(
-        cls, user_id: uuid.UUID, user: UserUpdate
+        user_id: uuid.UUID, user: UserUpdate
     ) -> User:
         async with async_session_maker() as session:
             db_user = await UserDAO.find_one_or_none(session, UserModel.id == user_id)
@@ -236,7 +329,6 @@ class UserService:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
                 )
-
             user_in = UserUpdateDB(**user.model_dump(exclude_unset=True))
             user_update = await UserDAO.update(
                 session, UserModel.id == user_id, obj_in=user_in
@@ -244,15 +336,14 @@ class UserService:
             await session.commit()
             return user_update
 
-    @classmethod
-    async def delete_user_from_superuser(cls, user_id: uuid.UUID):
+    @staticmethod
+    async def delete_user_from_superuser(user_id: uuid.UUID):
         async with async_session_maker() as session:
             await UserDAO.delete(session, UserModel.id == user_id)
             await session.commit()
 
-    @classmethod
-    async def create_profile(
-        cls, 
+    @staticmethod
+    async def create_profile( 
         profile: BaseProfile, 
         user_id: uuid.UUID
     ) -> ProfileModel:
@@ -273,16 +364,15 @@ class UserService:
             await session.commit()
             return new_profile
         
-    @classmethod
+    @staticmethod
     async def update_profile(
-        cls, 
         new_profile: BaseProfile,
         user_id: uuid.UUID
     ) -> ProfileModel:
         async with async_session_maker() as session:
             db_profile = await ProfileDAO.find_one_or_none(
                 session, 
-                ProfileModel.user_id == user_id
+                user_id == user_id
             )
             if not db_profile:
                 raise HTTPException(
@@ -291,17 +381,14 @@ class UserService:
                 )
             profile_update = await ProfileDAO.update(
                 session, 
-                ProfileModel.user_id == user_id, 
+                user_id == user_id, 
                 obj_in=new_profile
             )
             await session.commit()
             return profile_update
         
-    @classmethod
-    async def delete_profile(
-        cls, 
-        user_id: uuid.UUID
-    ) -> ProfileModel:
+    @staticmethod
+    async def delete_profile(user_id: uuid.UUID) -> ProfileModel:
         async with async_session_maker() as session:
             db_profile = await ProfileDAO.find_one_or_none(
                 session, 

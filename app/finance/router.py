@@ -60,21 +60,7 @@ async def adding_new_expense_category(
         user_id=current_user.id,
         new_category=new_category
     )
-# todo todo todo todo
 
-# @finance_router.get("/expencies")
-# async def get_expencies(
-#     type: BaseFinanceType,
-#     current_user: UserModel = Depends(get_current_active_user)
-# ) -> FinanceType:
-#     return await FinanceService.adding_income_type(type)
-
-# @finance_router.get("/incomes")
-# async def get_incomes(
-#     type: BaseFinanceType,
-#     current_user: UserModel = Depends(get_current_active_user)
-# ) -> FinanceType:
-#     return await FinanceService.adding_income_type(type)
 
 @finance_router.post("/income")
 async def create_income(

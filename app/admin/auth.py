@@ -17,7 +17,6 @@ class AdminAuth(AuthenticationBackend):
         user = await AuthService.authenticate_user(email, password)
         if user and user.is_superuser:
             token = await AuthService.create_token(user.id)
-            #print(access_token, '1231234444')
             request.session.update({"token": token.access_token})
         return True
 

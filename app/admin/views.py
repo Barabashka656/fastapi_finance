@@ -19,7 +19,7 @@ class BaseAdmin(ModelView):
 class UsersAdmin(BaseAdmin, model=UserModel):
     column_list = [
         UserModel.email,
-        UserModel.profile,
+        UserModel.profiles,
         UserModel.incomes,
         UserModel.expencies,
         UserModel.income_types,

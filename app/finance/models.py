@@ -25,12 +25,11 @@ class CurrencyModel(Base):
     name: Mapped[str]
     income: Mapped["IncomeModel"] = relationship(back_populates="currency")
     expense: Mapped["ExpenseModel"] = relationship(back_populates="currency")
-    profile: Mapped["ProfileModel"] = relationship(back_populates="currency")
+    profiles: Mapped["ProfileModel"] = relationship(back_populates="currency")
     
     def __str__(self):
         return 'Profile currency code: ' + self.currency_code
     
-
 
 class FinanceEntityModel(CurrencyRelationMixin, UserRelationMixin, BaseUUID):
     __abstract__ = True
@@ -46,14 +45,12 @@ class ExpenseModel(FinanceEntityModel):
     _currenecy_back_populates = "expense"
     
 
-
 class IncomeModel(FinanceEntityModel):
     __tablename__ = "incomes"
     _user_back_populates = __tablename__
     _finance_type_back_populates = __tablename__
     _currenecy_back_populates = "income"
     
-
 
 class BaseTypeModel(Base, UserRelationMixin):
     __abstract__ = True
