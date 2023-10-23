@@ -68,7 +68,7 @@ async def create_income(
     current_user: UserModel = Depends(get_current_active_user)
 ) -> FinanceItem:
     return await FinanceService.adding_finance_item(
-        finance_type=FinanceService.EXPENSE,
+        finance_type=FinanceService.INCOME,
         user_id=current_user.id,
         finance=finance_item
     )

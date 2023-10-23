@@ -174,7 +174,7 @@ async def update_current_user(
 async def delete_current_user(
     request: Request,
     response: Response,
-    current_user: UserModel = Depends(get_current_verified_user)
+    current_user: UserModel = Depends(get_not_verified_user)
 ):
     response.delete_cookie('access_token')
     response.delete_cookie('refresh_token')

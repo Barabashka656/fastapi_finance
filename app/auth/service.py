@@ -149,7 +149,7 @@ class AuthService:
         msg.set_content(
             '<div>'
             '<h1>verify account</h1>'
-            f'http://localhost:8080/auth/verify/{token}'
+            f'http://localhost:8000/auth/verify/{token}'
             '</div>',
             subtype='html'
         )
@@ -174,7 +174,7 @@ class AuthService:
         if user.is_verified:
             raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT, 
-                    detail="User already exists"
+                    detail="User already verified"
                 )
         token = AuthService._create_jwt_token(email=user.email)
         AuthService.send_verify_email.delay(token)
@@ -202,10 +202,9 @@ class AuthService:
                     "data": None,
                     "details": "User already verified"
                 }
-        
             await UserDAO.update(
                 session, 
-                email == email, 
+                UserModel.email == email, 
                 obj_in={"is_verified": True}
             )
             await session.commit()
