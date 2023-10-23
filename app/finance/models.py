@@ -1,18 +1,12 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 from decimal import Decimal
-import uuid
-from currency_converter import CurrencyConverter
 
-from sqlalchemy import ARRAY, ForeignKey, String, Text
 from .mixins import CurrencyRelationMixin, UserRelationMixin
-
 from app.utils.database.database import Base, BaseUUID
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
+from sqlalchemy import ARRAY, String, Text
 
 if TYPE_CHECKING:
     from app.auth.models import ProfileModel
@@ -36,6 +30,9 @@ class FinanceEntityModel(CurrencyRelationMixin, UserRelationMixin, BaseUUID):
     comment: Mapped[str] = mapped_column(Text)
     value: Mapped[Decimal]
     category: Mapped[str]
+    
+    def __str__(self):
+        return str(self.value) + ' ' + self.currency_code
 
 
 class ExpenseModel(FinanceEntityModel):
@@ -54,22 +51,21 @@ class IncomeModel(FinanceEntityModel):
 
 class BaseTypeModel(Base, UserRelationMixin):
     __abstract__ = True
+    _user_primary_key = True
     categories: Mapped[list[str]] = mapped_column(ARRAY(String))
 
 #$cash account
 class IncomeTypeModel(BaseTypeModel):
     __tablename__ = "income_types"
     _user_back_populates = __tablename__
-    _user_primary_key = True
+
     def __str__(self):
         return 'income_type'
+
 
 class ExpenseTypeModel(BaseTypeModel):
     __tablename__ = "expense_types"
     _user_back_populates = __tablename__
-    _user_primary_key = True
+    
     def __str__(self):
         return 'expense_type'
-
-
-
