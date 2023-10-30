@@ -3,7 +3,7 @@ from .data.config import settings
 from app.finance.router import finance_router
 
 from app.finance.utils import lifespan
-from app.admin.views import adding_views
+from app.admin.views import init_views
 
 from fastapi import FastAPI
 import sentry_sdk
@@ -20,4 +20,4 @@ app.include_router(router=auth_router)
 app.include_router(router=user_router)
 app.include_router(router=finance_router)
 
-adding_views(app)
+init_views(app)

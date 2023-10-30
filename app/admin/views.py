@@ -114,7 +114,7 @@ admin_views = [
     RefreshSessionAdmin
 ]
 
-def adding_views(app: FastAPI) -> None:
+def init_views(app: FastAPI) -> None:
     admin = Admin(
         app=app,
         engine=engine,
