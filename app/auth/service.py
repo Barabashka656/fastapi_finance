@@ -129,7 +129,7 @@ class AuthService:
                 + timedelta(days=settings.EMAIL_VERIFY_TOKEN_EXPIRE_DAYS),
             }
         encoded_jwt = jwt.encode(
-            to_encode, settings.SECRET, algorithm=settings.ALGORITHM
+            to_encode, settings.SECRET_AUTH, algorithm=settings.ALGORITHM
         )
         if user_id:
             return f"Bearer {encoded_jwt}"
@@ -189,7 +189,7 @@ class AuthService:
     async def verify_user(token: str):
         async with async_session_maker() as session:
             try:
-                payload = jwt.decode(token, settings.SECRET, algorithms=[settings.ALGORITHM])
+                payload = jwt.decode(token, settings.SECRET_AUTH, algorithms=[settings.ALGORITHM])
                 email = payload.get("email")
                 if not email:
                     raise InvalidTokenException

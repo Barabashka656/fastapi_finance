@@ -13,7 +13,7 @@ oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="/api/auth/login")
 
 async def get_not_verified_user(token: str = Depends(oauth2_scheme)) -> UserModel | None:
     try:
-        payload = jwt.decode(token, settings.SECRET, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_AUTH, algorithms=[settings.ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
             raise InvalidTokenException
