@@ -16,12 +16,14 @@ bcrypt = "^4.0.1"
 alembic = "^1.12.0"
 pydantic-settings = "^2.0.3"
 asyncpg = "^0.28.0"
-fastapi-cache2 = {extras = ["redis"], version = "^0.2.1"}
 sqladmin = "^0.15.2"
 sentry-sdk = {extras = ["fastapi"], version = "^1.32.0"}
 celery = "^5.3.4"
 flower = "^2.0.1"
 pyotp = "^2.9.0"
+fastapi-cache2 = "^0.2.1"
+redis = "^5.0.1"
+gunicorn = "^21.2.0"
 
 
 [build-system]

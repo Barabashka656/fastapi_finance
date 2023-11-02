@@ -1,0 +1,101 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:16
+    restart: always
+    container_name: db_app
+    command: -p 5431
+    volumes:
+      - postgresdata:/var/lib/postgresql/data
+    expose: 
+      - 5431
+    env_file: 
+      - app/data/.env
+    networks:
+      - custom
+
+  redis: 
+    image: redis:7.2
+    container_name: redis
+    env_file: 
+      - app/data/.env
+    expose:
+      - 6379
+    ports:
+      - "6379:6379"
+    networks:
+      - custom
+
+  app:
+    build:
+      context: .
+    env_file: 
+      - app/data/.env
+    container_name: finance_app
+    command: sh -c "/wait && /fastapi_app/docker/app.sh"
+    ports: 
+      - 9999:8000
+    environment:
+      WAIT_HOSTS: db:5431
+    networks:
+      - custom
+    depends_on:
+      - db
+      - redis
+
+  celery:
+    build:
+      context: .
+    env_file: 
+      - app/data/.env
+    container_name: celery_app
+    command: ["/fastapi_app/docker/celery.sh", "celery"]
+    environment:
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  flower:
+    build:
+      context: .
+    env_file: 
+      - app/data/.env
+    container_name: flower_app
+    command: ["/fastapi_app/docker/celery.sh", "flower"]
+    environment:
+      - CELERY_BROKER_URL=redis://redis/2
+      - CELERY_BACKEND_URL=redis://redis/1
+    depends_on:
+      - redis
+      - celery
+    ports:
+      - 8888:5555
+  
+  # prometheus:
+  #   image: prom/prometheus:v2.47.0
+  #   container_name: prometheus
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  #     - prometheusdata:/prometheus
+  #   restart: unless-stopped
+  #   ports:
+  #     - 9090:9090
+
+  # grafana:
+  #   image: grafana/grafana:10.1.2
+  #   container_name: grafana
+  #   volumes:
+  #     - grafanadata:/var/lib/grafana
+  #   restart: unless-stopped
+  #   ports:
+  #     - 3000:3000
+    
+networks:
+  custom:
+    driver: bridge
+
+volumes:
+  postgresdata:
+  # grafanadata:
+  # prometheusdata:
