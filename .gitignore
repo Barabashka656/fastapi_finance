@@ -1,6 +1,6 @@
-.vscode
 __pycache__
 .env
 .env.dev
-/migrations/versions
+*versions
 test.py
+docker.env

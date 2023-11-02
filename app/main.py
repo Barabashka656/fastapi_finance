@@ -2,7 +2,7 @@ from app.auth.router import auth_router, user_router
 from .data.config import settings
 from app.finance.router import finance_router
 
-from app.finance.utils import lifespan
+from app.utils.lifespan_init import lifespan
 from app.admin.views import init_views
 
 from fastapi import FastAPI
@@ -14,7 +14,15 @@ sentry_sdk.init(
     profiles_sample_rate=1.0,
 )
 
+
+
 app = FastAPI(title="Finance App", lifespan=lifespan)
+
+from prometheus_fastapi_instrumentator import Instrumentator
+
+Instrumentator(
+    should_group_status_codes=False, excluded_handlers=[".*admin*.", "/metrics"]
+).instrument(app).expose(app)
 
 app.include_router(router=auth_router)
 app.include_router(router=user_router)

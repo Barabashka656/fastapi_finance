@@ -1,0 +1,19 @@
+@echo off
+IF /I "%1" == "up" (
+    echo Building Docker image...
+    @REM cd /d F:\projects\fastapi\fastapi_finance
+    docker build . -t fastapi_app:latest
+    echo Building Docker containers...
+    docker-compose build
+    echo Running Docker containers...
+    docker-compose up
+)
+IF /I "%1" == "down" (
+    echo Deleting all Docker containers with volumes...
+    FOR /f "tokens=*" %%i IN ('docker ps -aq') DO docker rm -f -v %%i
+    echo Deleting all Docker images...
+    FOR /f "tokens=*" %%i IN ('docker images -q') DO docker rmi -f %%i
+    echo Deleting all Docker volumes...
+    FOR /f "tokens=*" %%i IN ('docker volume ls -q') DO docker volume rm %%i
+    echo Done.
+)

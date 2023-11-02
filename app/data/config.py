@@ -1,10 +1,16 @@
 import os
+from typing import Literal
 
 from dotenv import (
     load_dotenv
 )
 
-path = os.path.join('app', 'data', '.env.dev')
+if os.name == 'nt':
+    path = os.path.join('app', 'data', '.env.dev')
+else:
+    path = os.path.join('app', 'data', '.env')
+
+
 load_dotenv(path)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,10 +42,7 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: int
 
-    # docker fields
-    # POSTGRES_DB: str
-    # POSTGRES_USER: str
-    # POSTGRES_PASSWORD: str
+    LOG_LEVEL: Literal["INFO", "WARNING", "ERROR", "CRITICAL"]
 
     @property
     def DATABASE_URL(self) -> PostgresDsn:
