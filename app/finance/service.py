@@ -42,7 +42,7 @@ class FinanceService:
                 path = os.path.join("app", "finance", "currencies.json")
                 with open(path, "r") as f:
                     data = json.loads(f.read())
-                await CurrencyDAO.add_all(session, data)
+                CurrencyDAO.add_all(session, data)
                 await session.commit()
 
 

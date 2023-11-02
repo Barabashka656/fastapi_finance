@@ -91,10 +91,10 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             return None
 
     @classmethod
-    async def add_all(cls, session: AsyncSession, data: list):
+    def add_all(cls, session: AsyncSession, data: list):
         objects = [cls.model(**d) for d in data]
         try:
-            await session.add_all(objects)
+            session.add_all(objects)
         except (SQLAlchemyError, Exception) as e:
             if isinstance(e, SQLAlchemyError):
                 msg = "Database Exc: Cannot insert data into table"
@@ -103,6 +103,7 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
             # logger.error(msg, extra={"table": cls.model.__tablename__}, exc_info=True)
             print(msg)
+            print(e)
 
     @classmethod
     async def delete(cls, session: AsyncSession, *filter, **filter_by) -> None:
