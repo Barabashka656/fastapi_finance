@@ -122,10 +122,6 @@ class FinanceService:
     async def get_currencies_list(*filter, **filter_by) -> list[CurrencyModel]:
         async with async_session_maker() as session:
             currencies = await CurrencyDAO.find_all(session, *filter, **filter_by)
-        if not currencies:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Currencies not found"
-            )
         return currencies
 
     @staticmethod

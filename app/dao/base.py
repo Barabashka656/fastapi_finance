@@ -65,7 +65,7 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             .limit(limit)
         )
         result = await session.execute(stmt)
-        return result.mappings().all()
+        return result.scalars().all()
     
     @classmethod
     async def add(
@@ -130,13 +130,13 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             .returning(cls.model)
         )
         result = await session.execute(stmt)
-        return result.mappings().all()
+        return result.scalars().all()
 
     @classmethod
     async def add_bulk(cls, session: AsyncSession, data: list[dict[str, Any]]):
         try:
             result = await session.execute(insert(cls.model).returning(cls.model), data)
-            return result.mappings().all()
+            return result.scalars().all()
         except (SQLAlchemyError, Exception) as e:
             if isinstance(e, SQLAlchemyError):
                 msg = "Database Exc"
