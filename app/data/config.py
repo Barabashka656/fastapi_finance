@@ -4,7 +4,7 @@ from dotenv import (
     load_dotenv
 )
 
-path = os.path.join('app', 'data', '.env')
+path = os.path.join('app', 'data', '.env.dev')
 load_dotenv(path)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,10 +16,14 @@ from pydantic import (
 )
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(extra='forbid', env_file=path, env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(
+        extra='forbid', 
+        env_file=path, 
+        env_file_encoding='utf-8'
+    )
     
     # auth fields
-    SECRET: str
+    SECRET_AUTH: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -31,6 +35,11 @@ class Settings(BaseSettings):
     DB_PASS: str
     DB_HOST: str
     DB_PORT: int
+
+    # docker fields
+    # POSTGRES_DB: str
+    # POSTGRES_USER: str
+    # POSTGRES_PASSWORD: str
 
     @property
     def DATABASE_URL(self) -> PostgresDsn:
@@ -52,7 +61,5 @@ class Settings(BaseSettings):
 
     # sentry fields
     SENTRY_URL: HttpUrl
-
-    OTP_SECRET_KEY: str
 
 settings = Settings(_env_file=path, _env_file_encoding='utf-8')
