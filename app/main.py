@@ -5,15 +5,15 @@ from app.finance.router import finance_router
 from app.utils.lifespan_init import lifespan
 from app.admin.views import init_views
 
-from fastapi import FastAPI
 import sentry_sdk
+from fastapi import FastAPI
+
 
 sentry_sdk.init(
     dsn=settings.SENTRY_URL,
     traces_sample_rate=1.0,
     profiles_sample_rate=1.0,
 )
-
 
 
 app = FastAPI(title="Finance App", lifespan=lifespan)

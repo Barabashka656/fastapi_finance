@@ -1,7 +1,6 @@
 @echo off
 IF /I "%1" == "up" (
     echo Building Docker image...
-    @REM cd /d F:\projects\fastapi\fastapi_finance
     docker build . -t fastapi_app:latest
     echo Building Docker containers...
     docker-compose build
