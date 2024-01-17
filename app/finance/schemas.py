@@ -10,7 +10,7 @@ class Currency(BaseModel):
 
 
 class BaseFinanceType(BaseModel):
-    user_id: str | None
+    user_id: str | None # ????
     categories: list | None = Field(None)
 
     class Config:
